@@ -1,6 +1,6 @@
 export class webglUtils {
 
-    static loadShaderFromScript(gl: WebGLRenderingContext, shaderElem: HTMLScriptElement, shaderType: GLenum): WebGLShader {
+    static loadFromScript(gl: WebGLRenderingContext, shaderElem: HTMLScriptElement, shaderType: GLenum): WebGLShader {
         let shader = gl.createShader(shaderType);
         gl.shaderSource(shader, shaderElem.text);
         gl.compileShader(shader);

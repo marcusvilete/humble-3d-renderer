@@ -5,6 +5,15 @@ import { webglUtils } from "./webGLUtils"
 import { GameObject } from "./gameobject";
 import { Transform } from "./transform";
 import { Camera } from "./camera";
+import { Renderer } from "./renderer";
+
+//TODO:
+// find a way to make only ONE vertex buffer to fit all vertex of all meshes...
+// every mesh should keep its own range indices, so we can draw every mesh with diferent parameters and/or shader programs
+// i think we should update the vertex buffer only when we create or destroy a mesh.
+// i said vertex, but it is actually every buffer (vertex, normal, uv, etc)
+// remember: buffer data dont(normally) changes, so we are fine. what changes are transforms...
+
 
 // stuff related to camera and camera movement
 let firsPersonCamera = {
@@ -57,31 +66,48 @@ let previousFrameTime = 0;
 let frameCount = 0;
 let timeForFPS = 0;
 
-//Webgl stuff
-let gl: WebGLRenderingContext = null;
-let program: WebGLProgram = null;
-//let indexBuffer: WebGLBuffer = null;
-let vertexBuffer: WebGLBuffer = null;
-//let colorBuffer: WebGLBuffer = null;
-let texCoordsBuffer: WebGLBuffer = null;
-let texture: WebGLTexture = null;
-
+let renderer: Renderer;
 //array of game objects
 let gameObjects = new Array<GameObject>();
+let redCubeImage: HTMLImageElement;
+let blueCubeImage: HTMLImageElement;
 
 window.onload = main;
 function main(): void {
-    initWebgl();
-    setup();
-    createEventHandlers();
-    requestAnimationFrame(gameLoop);
+    //first of all, load resources!
+    loadResources().then(() => {
+        setup();
+        loadMeshes();
+        renderer.bufferData(gameObjects); // This should be called everytime we add or remove meshes to the scene
+        createEventHandlers();
+        requestAnimationFrame(gameLoop);
+    });
+
 }
 
 function setup(): void {
-    loadMeshes();
-    let canvas = gl.canvas as HTMLCanvasElement;
-    const aspect = canvas.clientWidth / canvas.clientHeight;
-    //let yFov = 60 * (Math.PI / 180) //To radians;
+    let canvasElem: HTMLCanvasElement = document.querySelector("#canvas");
+    //let vertexShaderElem: HTMLScriptElement = document.querySelector("#vertex-shader-3d-solid-color");
+    //let fragmentShaderElem: HTMLScriptElement = document.querySelector("#fragment-shader-3d-solid-color");
+    // let vertexShaderElem: HTMLScriptElement = document.querySelector("#vertex-shader-3d-textured");
+    // let fragmentShaderElem: HTMLScriptElement = document.querySelector("#fragment-shader-3d-textured");
+    let vertexShaderElem: HTMLScriptElement = document.querySelector("#vertex-shader-3d-textured-lit");
+    let fragmentShaderElem: HTMLScriptElement = document.querySelector("#fragment-shader-3d-textured-lit");
+
+    //initialize canvas and webgl stuff
+    let gl = canvasElem.getContext("webgl");
+    if (!gl) {
+        console.error("Something went wrong while creating webgl context");
+        return;
+    }
+
+    let vertexShader = webglUtils.loadFromScript(gl, vertexShaderElem, gl.VERTEX_SHADER);
+    let fragmentShader = webglUtils.loadFromScript(gl, fragmentShaderElem, gl.FRAGMENT_SHADER);
+    let program = webglUtils.createProgram(gl, vertexShader, fragmentShader);
+
+    renderer = new Renderer(gl, program);
+    
+    const aspect = canvasElem.clientWidth / canvasElem.clientHeight;
     let yFov = degToRad(60); //To radians;
     let zNear = 1;
     let zFar = 2000;
@@ -95,149 +121,31 @@ function setup(): void {
     firsPersonCamera.cameraObj.computePerspectiveMatrix();
 }
 
+async function loadResources() {
+    let redCubePromise = loadImage("./assets/redCube.png");
+    let blueCubePromise = loadImage("./assets/blueCube.png");
+    await Promise.all([redCubePromise, blueCubePromise]).then((values) => {
+        redCubeImage = values[0];
+        blueCubeImage = values[1];
+    });
+}
+
+function loadImage(url: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+        let img = new Image();
+        img.addEventListener('load', () => {
+            resolve(img);
+        });
+        img.src = url;
+    });
+}
+
 function loadMeshes(): void {
-    let cubeMesh = new Mesh();
-
-    // cubeMesh.vertices = [
-    //     new Vector3(-1, -1, 1),
-    //     new Vector3(-1, 1, 1),
-    //     new Vector3(1, 1, 1),
-    //     new Vector3(1, -1, 1),
-    //     new Vector3(-1, -1, -1),
-    //     new Vector3(-1, 1, -1),
-    //     new Vector3(1, 1, -1),
-    //     new Vector3(1, -1, -1)
-    // ];
-    // cubeMesh.faces = [
-    //     new Face(1, 0, 3),
-    //     new Face(3, 2, 1),
-    //     new Face(2, 3, 7),
-    //     new Face(7, 6, 2),
-    //     new Face(3, 0, 4),
-    //     new Face(4, 7, 3),
-    //     new Face(6, 5, 1),
-    //     new Face(1, 2, 6),
-    //     new Face(4, 5, 6),
-    //     new Face(6, 7, 4),
-    //     new Face(5, 4, 0),
-    //     new Face(0, 1, 5)
-    // ];
-    // cubeMesh.uvCoords = [
-    //     new Vector2(0, 0),
-    //     new Vector2(0, 1),
-
-    //     new Vector2(1, 1),
-    //     new Vector2(1, 0),
-
-    //     new Vector2(0, 0),
-    //     new Vector2(0, 1),
-
-    //     new Vector2(1, 1),
-    //     new Vector2(1, 0)
-    // ];
-
-    cubeMesh.vertices = [
-        new Vector3(-0.5, -0.5, -0.5),
-        new Vector3(-0.5, 0.5, -0.5),
-        new Vector3(0.5, -0.5, -0.5),
-
-        new Vector3(-0.5, 0.5, -0.5),
-        new Vector3(0.5, 0.5, -0.5),
-        new Vector3(0.5, -0.5, -0.5),
-
-        new Vector3(-0.5, -0.5, 0.5),
-        new Vector3(0.5, -0.5, 0.5),
-        new Vector3(-0.5, 0.5, 0.5),
-
-        new Vector3(-0.5, 0.5, 0.5),
-        new Vector3(0.5, -0.5, 0.5),
-        new Vector3(0.5, 0.5, 0.5),
-
-        new Vector3(-0.5, 0.5, -0.5),
-        new Vector3(-0.5, 0.5, 0.5),
-        new Vector3(0.5, 0.5, -0.5),
-
-        new Vector3(-0.5, 0.5, 0.5),
-        new Vector3(0.5, 0.5, 0.5),
-        new Vector3(0.5, 0.5, -0.5),
-
-        new Vector3(-0.5, -0.5, -0.5),
-        new Vector3(0.5, -0.5, -0.5),
-        new Vector3(-0.5, -0.5, 0.5),
-
-        new Vector3(-0.5, -0.5, 0.5),
-        new Vector3(0.5, -0.5, -0.5),
-        new Vector3(0.5, -0.5, 0.5),
-
-        new Vector3(-0.5, -0.5, -0.5),
-        new Vector3(-0.5, -0.5, 0.5),
-        new Vector3(-0.5, 0.5, -0.5),
-
-        new Vector3(-0.5, -0.5, 0.5),
-        new Vector3(-0.5, 0.5, 0.5),
-        new Vector3(-0.5, 0.5, -0.5),
-
-        new Vector3(0.5, -0.5, -0.5),
-        new Vector3(0.5, 0.5, -0.5),
-        new Vector3(0.5, -0.5, 0.5),
-
-        new Vector3(0.5, -0.5, 0.5),
-        new Vector3(0.5, 0.5, -0.5),
-        new Vector3(0.5, 0.5, 0.5),
-    ];
-
-    cubeMesh.uvCoords = [
-        new Vector2(0.662061, 0.986184),
-        new Vector2(0.337939, 0.986184),
-        new Vector2(0.662061, 0.517092),
-        
-        new Vector2(0.337939, 0.986184),
-        new Vector2(0.337939, 0.517092),
-        new Vector2(0.662061, 0.517092),
-
-        new Vector2(0.337939, 0.013816),
-        new Vector2(0.662061, 0.013816),
-        new Vector2(0.337939, 0.482908),
-        
-        new Vector2(0.337939, 0.482908),
-        new Vector2(0.662061, 0.013816),
-        new Vector2(0.662061, 0.482908),
-
-        new Vector2(0.337939, 0.986184),
-        new Vector2(0.013816, 0.986184),
-        new Vector2(0.337939, 0.517092),
-
-        new Vector2(0.013816, 0.986184),
-        new Vector2(0.013816, 0.517092),
-        new Vector2(0.337939, 0.517092),
-
-        new Vector2(0.662061, 0.986184),
-        new Vector2(0.662061, 0.517092),
-        new Vector2(0.986184, 0.986184),
-
-        new Vector2(0.986184, 0.986184),
-        new Vector2(0.662061, 0.517092),
-        new Vector2(0.986184, 0.517092),
-
-        new Vector2(0.013816, 0.013816),
-        new Vector2(0.337939, 0.013816),
-        new Vector2(0.013816, 0.482908),
-
-        new Vector2(0.337939, 0.013816),
-        new Vector2(0.337939, 0.482908),
-        new Vector2(0.013816, 0.482908),
-
-        new Vector2(0.986184, 0.013816),
-        new Vector2(0.986184, 0.482908),
-        new Vector2(0.662061, 0.013816),
-
-        new Vector2(0.662061, 0.013816),
-        new Vector2(0.986184, 0.482908),
-        new Vector2(0.662061, 0.482908)
-    ]
-
-    cubeMesh.color = new Vector4(80, 70, 200, 255);
-    cubeMesh.drawMode = DrawMode.SolidColor;
+    let redCubeMesh = Mesh.loadMeshFromFile("this is a mockup!");
+    let blueCubeMesh = Mesh.loadMeshFromFile("this is a mockup!");
+    
+    redCubeMesh.texture = renderer.loadTexture(redCubeImage);
+    blueCubeMesh.texture = renderer.loadTexture(blueCubeImage);
 
     for (let i = 0; i < 1000; i++) {
         let newCube = new GameObject(
@@ -246,50 +154,10 @@ function loadMeshes(): void {
                 new Vector3(0, 0, 0),  //rotation
                 new Vector3(1, 1, 1)   //scale
             ),
-            cubeMesh
+            i % 2 == 0 ? redCubeMesh : blueCubeMesh
         );
         gameObjects.push(newCube);
     }
-}
-
-function initWebgl(): void {
-    let canvasElem: HTMLCanvasElement = document.querySelector("#canvas");
-    //let vertexShaderElem: HTMLScriptElement = document.querySelector("#vertex-shader-3d-solid-color");
-    //let fragmentShaderElem: HTMLScriptElement = document.querySelector("#fragment-shader-3d-solid-color");
-    let vertexShaderElem: HTMLScriptElement = document.querySelector("#vertex-shader-3d-textured");
-    let fragmentShaderElem: HTMLScriptElement = document.querySelector("#fragment-shader-3d-textured");
-
-    //initialize canvas and webgl stuff
-    gl = canvasElem.getContext("webgl");
-    if (!gl) {
-        console.error("Something went wrong while creating webgl context");
-        return;
-    }
-
-    let vertexShader = webglUtils.loadShaderFromScript(gl, vertexShaderElem, gl.VERTEX_SHADER);
-    let fragmentShader = webglUtils.loadShaderFromScript(gl, fragmentShaderElem, gl.FRAGMENT_SHADER);
-    program = webglUtils.createProgram(gl, vertexShader, fragmentShader);
-
-    //TODO: this is program specific, so when we have multiple programs, this needs to move
-    //indexBuffer = gl.createBuffer();
-    vertexBuffer = gl.createBuffer();
-    //colorBuffer = gl.createBuffer();
-    texCoordsBuffer = gl.createBuffer();
-
-    texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]));
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-    let image = new Image();
-    image.crossOrigin = "";
-    image.src = "./assets/cube.png";
-    image.addEventListener('load', function () {
-        // Now that the image has loaded make copy it to the texture.
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-        gl.generateMipmap(gl.TEXTURE_2D);
-    });
 }
 
 function gameLoop(now: number): void {
@@ -299,7 +167,7 @@ function gameLoop(now: number): void {
     computeFramesPerSecond();
     processInput();
     update();
-    render();
+    renderer.render(gameObjects);
     requestAnimationFrame(gameLoop);
 }
 
@@ -323,81 +191,11 @@ function update(): void {
         Vector3.up);
 
     for (let i = 0; i < gameObjects.length; i++) {
-        gameObjects[i].transform.computeWorldViewMatrix(Matrix4.multiplyMatrices4(viewMatrix, projectionMatrix));
-    }
-}
-
-function render(): void {
-    // Tell WebGL how to convert from clip space to pixels
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.useProgram(program);
-    gl.enable(gl.CULL_FACE);
-    gl.enable(gl.DEPTH_TEST);
-    //gl.colorMask(true, true, true, true);
-    gl.clearColor(0.5, 0.5, 0.5, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    //gl.lineWidth(window.devicePixelRatio);
-
-    //TODO: how can i make so every mesh can have its own program if needed
-    let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
-    //let colorAttributeLocation = gl.getAttribLocation(program, "a_color");
-    let texCoordsAttributeLocation = gl.getAttribLocation(program, "a_texcoord");
-    let matrixUniformLocation = gl.getUniformLocation(program, "u_matrix");
-
-    for (let i = 0; i < gameObjects.length; i++) {
-        if (gameObjects[i].mesh === null) continue;
-
-        gl.uniformMatrix4fv(matrixUniformLocation, false, gameObjects[i].transform.getWorldViewMatrix().flatten());
-        //passing faces data (as indexes to be looked up in the vertex buffer)    
-        //gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        //gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, gameObjects[i].mesh.flattenFacesArray(), gl.STATIC_DRAW);
-
-        //passing actual vertex data
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, gameObjects[i].mesh.flattenPositionArray(), gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(positionAttributeLocation);
-        //Tell the position attribute how to get data out of positionBuffer (ARRAY_BUFFER)
-        gl.vertexAttribPointer(
-            positionAttributeLocation,
-            3,          // we are passing 3 components per iteration
-            gl.FLOAT,   // the type of each component
-            false,      // should normalize?
-            0,          // 0 = move forward size * sizeof(type) each iteration to get the next position
-            0           // 0 = start at the beginning of the buffer
-        );
-
-        //passing color data for each vertex
-        //gl.bindBuffer(gl.ARRAY_BUFFER, `colorBuffer`);
-        //gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(gameObjects[i].mesh.flattenColorArray()), gl.STATIC_DRAW);
-        //gl.enableVertexAttribArray(colorAttributeLocation);
-        // Tell the color attribute how to get data out of colorBuffer (ARRAY_BUFFER)
-        // gl.vertexAttribPointer(
-        //     colorAttributeLocation,
-        //     4,          // we are passing 4 components per iteration
-        //     gl.UNSIGNED_BYTE,   // the type of each component
-        //     true,      // should normalize?
-        //     0,          // 0 = move forward size * sizeof(type) each iteration to get the next position
-        //     0           // 0 = start at the beginning of the buffer
-        // );
-        gl.bindBuffer(gl.ARRAY_BUFFER, texCoordsBuffer);
-        gl.enableVertexAttribArray(texCoordsAttributeLocation);
-        gl.vertexAttribPointer(
-            texCoordsAttributeLocation,
-            2,         // we are passing 2 components per iteration
-            gl.FLOAT,  // the type of each component
-            false,     // should normalize?
-            0,         // 0 = move forward size * sizeof(type) each iteration to get the next position
-            0          // 0 = start at the beginning of the buffer
-        );
-        gl.bufferData(gl.ARRAY_BUFFER, gameObjects[i].mesh.flattenTexCoords(), gl.STATIC_DRAW);
-
-        gl.drawArrays(gameObjects[i].mesh.drawMode, 0, gameObjects[i].mesh.getVertexCount());
+        gameObjects[i].transform.computeMatrices(Matrix4.multiplyMatrices4(viewMatrix, projectionMatrix));
     }
 }
 
 function createEventHandlers(): void {
-
     document.addEventListener("keydown", function (event: KeyboardEvent) {
         if (event.key === 'w') {
             controls.up = true;
@@ -426,7 +224,7 @@ function createEventHandlers(): void {
     });
 
     // pointer lock object forking for cross browser
-    let canvas = gl.canvas as HTMLCanvasElement;
+    let canvas = renderer.getContext().canvas as HTMLCanvasElement;
 
     canvas.addEventListener("click", function (this: HTMLCanvasElement, event: Event) {
         this.requestPointerLock();

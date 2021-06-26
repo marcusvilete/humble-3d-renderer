@@ -9,6 +9,7 @@ export class Transform {
     right: Vector3;
     forward: Vector3;
     private worldViewMatrix: Matrix4;
+    private worldMatrix: Matrix4;
     constructor(position?: Vector3, rotation?: Vector3, scale?: Vector3, up?: Vector3, right?: Vector3, forward?: Vector3) {
         this.position = position ?? new Vector3();
         this.rotation = rotation ?? new Vector3();
@@ -65,26 +66,29 @@ export class Transform {
     translate(translation: Vector3): void {
         this.position = Vector3.add(this.position, translation);
     }
-    computeWorldViewMatrix(viewProjectionMatrix: Matrix4): void {
-        let transformMatrix = Matrix4.makeIdentity();
+    computeMatrices(viewProjectionMatrix: Matrix4): void {
+        this.worldMatrix = Matrix4.makeIdentity();
         let translationMatrix = Matrix4.makeTranslation(this.position.x, this.position.y, this.position.z);
         let XRotationMatrix = Matrix4.makeXRotation(this.rotation.x);
         let yRotationMatrix = Matrix4.makeYRotation(this.rotation.y);
         let zRotationMatrix = Matrix4.makeZRotation(this.rotation.z);
         let scaleMatrix = Matrix4.makeScale(this.scale.x, this.scale.y, this.scale.z);
 
-        transformMatrix = Matrix4.multiplyMatrices4(translationMatrix, transformMatrix);
-        transformMatrix = Matrix4.multiplyMatrices4(XRotationMatrix, transformMatrix);
-        transformMatrix = Matrix4.multiplyMatrices4(yRotationMatrix, transformMatrix);
-        transformMatrix = Matrix4.multiplyMatrices4(zRotationMatrix, transformMatrix);
-        transformMatrix = Matrix4.multiplyMatrices4(scaleMatrix, transformMatrix);
+        this.worldMatrix = Matrix4.multiplyMatrices4(translationMatrix, this.worldMatrix);
+        this.worldMatrix = Matrix4.multiplyMatrices4(XRotationMatrix, this.worldMatrix);
+        this.worldMatrix = Matrix4.multiplyMatrices4(yRotationMatrix, this.worldMatrix);
+        this.worldMatrix = Matrix4.multiplyMatrices4(zRotationMatrix, this.worldMatrix);
+        this.worldMatrix = Matrix4.multiplyMatrices4(scaleMatrix, this.worldMatrix);
 
         //worldMatrix = Matrix4.multiplyMatrices4(gameObject.transform.getTransformMatrix(), worldMatrix);
 
-        this.worldViewMatrix = Matrix4.multiplyMatrices4(transformMatrix, viewProjectionMatrix);
+        this.worldViewMatrix = Matrix4.multiplyMatrices4(this.worldMatrix, viewProjectionMatrix);
     }
     getWorldViewMatrix(): Matrix4 {
         return this.worldViewMatrix;
+    }
+    getWorldMatrix(): Matrix4 {
+        return this.worldMatrix;
     }
     lookAt(target: Vector3, up: Vector3): void {
         let lookAtMatrix = Matrix4.makeLookAtMatrix(this.position, target, Vector3.up);
