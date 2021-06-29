@@ -12,3 +12,9 @@ This is just an experiment,  not really "production ready", so be careful!
 
 
 [< Try it here >](https://marcusvilete.github.io/humble-3d-renderer/index.html)
+
+** Might take a while to load the model! **
+
+** WASD to translate the camera **
+
+** MOUSE to rotate the camera **
