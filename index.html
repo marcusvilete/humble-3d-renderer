@@ -11,26 +11,6 @@
         <canvas id="canvas" width="960" height="540"></canvas>
     </div>
 
-    <div>
-
-    </div>
-
-    <!-- basic shaders... only vertex and color data -->
-    <script id="vertex-shader-3d-solid-color" type="x-shader/x-vertex">
-        attribute vec4 a_position; attribute vec4 a_color; uniform mat4 u_matrix; varying vec4 v_color; void main() { gl_Position = u_matrix * a_position; v_color = a_color; }
-    </script>
-    <script id="fragment-shader-3d-solid-color" type="x-shader/x-fragment">
-        precision mediump float; varying vec4 v_color; void main() { gl_FragColor = v_color; }
-    </script>
-
-    <!-- basic shaders... only vertex and texture data -->
-    <script id="vertex-shader-3d-textured" type="x-shader/x-vertex">
-        attribute vec4 a_position; attribute vec2 a_texcoord; varying vec2 v_texcoord; uniform mat4 u_matrix; void main() { gl_Position = u_matrix * a_position; v_texcoord = a_texcoord; }
-    </script>
-    <script id="fragment-shader-3d-textured" type="x-shader/x-fragment">
-        precision mediump float; varying vec2 v_texcoord; uniform sampler2D u_texture; void main() { gl_FragColor = texture2D(u_texture, v_texcoord); }
-    </script>
-
     <!-- basic shaders... vertex, texture and normal data -->
     <script id="vertex-shader-3d-textured-lit" type="x-shader/x-vertex">
         attribute vec4 a_position; attribute vec2 a_texcoord; attribute vec3 a_normal; uniform mat4 u_worldViewMatrix; uniform mat4 u_worldInverseTransposeMatrix; varying vec2 v_texcoord; varying vec3 v_normal; void main() { gl_Position = u_worldViewMatrix *
@@ -38,7 +18,7 @@
     </script>
     <script id="fragment-shader-3d-textured-lit" type="x-shader/x-fragment">
         precision mediump float; varying vec2 v_texcoord; varying vec3 v_normal; uniform sampler2D u_texture; uniform vec3 u_reverseLightDirection; void main() { vec3 normal = normalize(v_normal); float light = dot(normal, u_reverseLightDirection); gl_FragColor
-        = texture2D(u_texture, v_texcoord); gl_FragColor.rgb *= light; }
+        = texture2D(u_texture, v_texcoord); gl_FragColor.rgb *= max(light, 0.6); }
     </script>
 
     <script src="./dist/main.js"></script>

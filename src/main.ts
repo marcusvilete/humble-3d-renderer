@@ -1,19 +1,13 @@
-import { Vector2, Vector3, Vector4 } from "./vector"
-import { Matrix4 } from "./matrix"
-import { DrawMode, Face, Mesh } from "./mesh";
-import { webglUtils } from "./webGLUtils"
-import { GameObject } from "./gameobject";
-import { Transform } from "./transform";
-import { Camera } from "./camera";
-import { Renderer } from "./renderer";
-
-//TODO:
-// find a way to make only ONE vertex buffer to fit all vertex of all meshes...
-// every mesh should keep its own range indices, so we can draw every mesh with diferent parameters and/or shader programs
-// i think we should update the vertex buffer only when we create or destroy a mesh.
-// i said vertex, but it is actually every buffer (vertex, normal, uv, etc)
-// remember: buffer data dont(normally) changes, so we are fine. what changes are transforms...
-
+import { Vector3 } from "./Rendering/vector"
+import { Matrix4 } from "./Rendering/matrix"
+import { DrawMode, Mesh } from "./Rendering/mesh";
+import { webglUtils } from "./Etc/webglUtils"
+import { GameObject } from "./Rendering/gameobject";
+import { Transform } from "./Rendering/transform";
+import { Camera } from "./Rendering/camera";
+import { Renderer } from "./Rendering/renderer";
+import { FileLoader } from "./File/FileLoader";
+import { degToRad } from "./Etc/mathFunctions";
 
 // stuff related to camera and camera movement
 let firsPersonCamera = {
@@ -22,7 +16,7 @@ let firsPersonCamera = {
     rightVelocity: new Vector3(0, 0, 0),
     maxXRotation: degToRad(89),
     minXRotation: degToRad(-89),
-    cameraSpeed: 50,
+    cameraSpeed: 20,
     mouseSensibility: 0.1,
     Move(direction: Vector3) {
         let cam = this.cameraObj as Camera;
@@ -68,16 +62,18 @@ let timeForFPS = 0;
 
 let renderer: Renderer;
 //array of game objects
+let rootGameObject = new GameObject();
 let gameObjects = new Array<GameObject>();
-let redCubeImage: HTMLImageElement;
-let blueCubeImage: HTMLImageElement;
+
+let allstarImage: HTMLImageElement;
+let allstarMeshes: Mesh[];
 
 window.onload = main;
 function main(): void {
     //first of all, load resources!
     loadResources().then(() => {
         setup();
-        loadMeshes();
+        instantiateObjects();
         renderer.bufferData(gameObjects); // This should be called everytime we add or remove meshes to the scene
         createEventHandlers();
         requestAnimationFrame(gameLoop);
@@ -87,10 +83,6 @@ function main(): void {
 
 function setup(): void {
     let canvasElem: HTMLCanvasElement = document.querySelector("#canvas");
-    //let vertexShaderElem: HTMLScriptElement = document.querySelector("#vertex-shader-3d-solid-color");
-    //let fragmentShaderElem: HTMLScriptElement = document.querySelector("#fragment-shader-3d-solid-color");
-    // let vertexShaderElem: HTMLScriptElement = document.querySelector("#vertex-shader-3d-textured");
-    // let fragmentShaderElem: HTMLScriptElement = document.querySelector("#fragment-shader-3d-textured");
     let vertexShaderElem: HTMLScriptElement = document.querySelector("#vertex-shader-3d-textured-lit");
     let fragmentShaderElem: HTMLScriptElement = document.querySelector("#fragment-shader-3d-textured-lit");
 
@@ -106,7 +98,7 @@ function setup(): void {
     let program = webglUtils.createProgram(gl, vertexShader, fragmentShader);
 
     renderer = new Renderer(gl, program);
-    
+
     const aspect = canvasElem.clientWidth / canvasElem.clientHeight;
     let yFov = degToRad(60); //To radians;
     let zNear = 1;
@@ -122,49 +114,42 @@ function setup(): void {
 }
 
 async function loadResources() {
-    let redCubePromise = loadImage("./assets/redCube.png");
-    let blueCubePromise = loadImage("./assets/blueCube.png");
-    await Promise.all([redCubePromise, blueCubePromise]).then((values) => {
-        redCubeImage = values[0];
-        blueCubeImage = values[1];
-    });
-}
-
-function loadImage(url: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-        let img = new Image();
-        img.addEventListener('load', () => {
-            resolve(img);
-        });
-        img.src = url;
-    });
-}
-
-function loadMeshes(): void {
-    let redCubeMesh = Mesh.loadMeshFromFile("this is a mockup!");
-    let blueCubeMesh = Mesh.loadMeshFromFile("this is a mockup!");
+    //we load everything we need to start rendering here....
+    let allstarImagePromise = FileLoader.loadImage("./assets/allstar.png");
+    let allstarMeshesPromise = FileLoader.loadOBJ("./assets/allstar.obj");
+    let promises: Promise<any>[] = [allstarImagePromise, allstarMeshesPromise];
     
-    redCubeMesh.texture = renderer.loadTexture(redCubeImage);
-    blueCubeMesh.texture = renderer.loadTexture(blueCubeImage);
+    //resume only when everything is ready....
+    await Promise.all(promises).then((values) => {
+        allstarImage = values[0];
+        allstarMeshes = values[1];
+    });
+}
 
-    for (let i = 0; i < 1000; i++) {
-        let newCube = new GameObject(
+function instantiateObjects(): void {
+    let allstarTexture = renderer.loadTexture(allstarImage);
+
+    allstarMeshes.forEach(m => {
+        m.texture = allstarTexture;
+        m.drawMode = DrawMode.Texture;
+        let newObj = new GameObject(
             new Transform(
-                new Vector3(randomIntFromInterval(-100, 100), randomIntFromInterval(-100, 100), randomIntFromInterval(-100, 100)), //position
-                new Vector3(0, 0, 0),  //rotation
-                new Vector3(1, 1, 1)   //scale
+                new Vector3(0, 1.5, -5),
+                new Vector3(0, 0, 0),
+                new Vector3(5, 5, 5),
             ),
-            i % 2 == 0 ? redCubeMesh : blueCubeMesh
+            m
         );
-        gameObjects.push(newCube);
-    }
+        newObj.setParent(rootGameObject);
+        gameObjects.push(newObj);
+    });
 }
 
 function gameLoop(now: number): void {
     now *= 0.001;
     deltaTime = now - previousFrameTime;
     previousFrameTime = now;
-    computeFramesPerSecond();
+    //computeFramesPerSecond();
     processInput();
     update();
     renderer.render(gameObjects);
@@ -190,8 +175,11 @@ function update(): void {
         Vector3.add(camera.transform.position, camera.transform.forward),
         Vector3.up);
 
+    rootGameObject.updateLocalMatrices();
+    rootGameObject.updateWorldMatrices();
+
     for (let i = 0; i < gameObjects.length; i++) {
-        gameObjects[i].transform.computeMatrices(Matrix4.multiplyMatrices4(viewMatrix, projectionMatrix));
+        gameObjects[i].transform.computeWorldViewMatrices(Matrix4.multiplyMatrices4(viewMatrix, projectionMatrix));
     }
 }
 
@@ -261,15 +249,3 @@ function computeFramesPerSecond() {
     }
 }
 
-//TODO: move math stuff to its own module
-function radToDeg(r: number): number {
-    return r * 180 / Math.PI;
-}
-
-function degToRad(d: number): number {
-    return d * Math.PI / 180;
-}
-
-function randomIntFromInterval(min: number, max: number) { // min and max included 
-    return Math.floor(Math.random() * (max - min + 1) + min)
-}

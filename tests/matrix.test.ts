@@ -1,4 +1,4 @@
-import { Matrix4 } from "../src/matrix"
+import { Matrix4 } from "../src/Rendering/matrix"
 
 
 

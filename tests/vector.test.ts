@@ -1,4 +1,4 @@
-import { Vector2, Vector3, Vector4 } from "../src/vector"
+import { Vector2, Vector3, Vector4 } from "../src/Rendering/vector"
 
 
 describe('Vector2 operations:', function () {
