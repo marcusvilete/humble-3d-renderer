@@ -22,7 +22,7 @@ import { Vector3, Vector4 } from "./vector"
  * [ r0c0,  r1c0,  r2c0,  r3c0, r0c1,  r1c1,  r2c1,  r3c1,  r0c2,  r1c2,  r2c2,  r3c2, r0c3  r1c3  r2c3  r3c3 ]
  */
 export class Matrix4 {
-    private elements: number[]
+    elements: number[]
 
     constructor(r0c0?: number, r0c1?: number, r0c2?: number, r0c3?: number,
         r1c0?: number, r1c1?: number, r1c2?: number, r1c3?: number,
@@ -387,4 +387,46 @@ export class Matrix4 {
                 (tmp_20 * m12 + tmp_23 * m22 + tmp_17 * m02))
         );
     }
+    static compose(translation: Vector3, scale: Vector3, quaternion: Vector4): Matrix4 {
+        let result = Matrix4.makeIdentity();
+
+        const x2 = quaternion.x + quaternion.x;
+        const y2 = quaternion.y + quaternion.y;
+        const z2 = quaternion.z + quaternion.z;
+
+        const xx = quaternion.x * x2;
+        const xy = quaternion.x * y2;
+        const xz = quaternion.x * z2;
+
+        const yy = quaternion.y * y2;
+        const yz = quaternion.y * z2;
+        const zz = quaternion.z * z2;
+
+        const wx = quaternion.w * x2;
+        const wy = quaternion.w * y2;
+        const wz = quaternion.w * z2;
+
+        result.elements[0] = (1 - (yy + zz)) * scale.x;
+        result.elements[1] = (xy + wz) * scale.x;
+        result.elements[2] = (xz - wy) * scale.x;
+        result.elements[3] = 0;
+    
+        result.elements[4] = (xy - wz) * scale.y;
+        result.elements[5] = (1 - (xx + zz)) * scale.y;
+        result.elements[6] = (yz + wx) * scale.y;
+        result.elements[7] = 0;
+    
+        result.elements[8] = (xz + wy) * scale.z;
+        result.elements[9] = (yz - wx) * scale.z;
+        result.elements[10] = (1 - (xx + yy)) * scale.z;
+        result.elements[11] = 0;
+    
+        result.elements[12] = translation.x;
+        result.elements[13] = translation.y;
+        result.elements[14] = translation.z;
+        result.elements[15] = 1;
+        
+        return result;
+    }
+    
 }

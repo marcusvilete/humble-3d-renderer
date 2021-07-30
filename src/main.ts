@@ -1,13 +1,13 @@
-import { Vector3 } from "./Rendering/vector"
+import { Vector3, Vector4 } from "./Rendering/vector"
 import { Matrix4 } from "./Rendering/matrix"
-import { DrawMode, Mesh } from "./Rendering/mesh";
 import { webglUtils } from "./Etc/webglUtils"
-import { GameObject } from "./Rendering/gameobject";
-import { Transform } from "./Rendering/transform";
 import { Camera } from "./Rendering/camera";
-import { Renderer } from "./Rendering/renderer";
 import { FileLoader } from "./File/FileLoader";
 import { degToRad } from "./Etc/mathFunctions";
+import { AnimatedModel } from "./animatedModel";
+import { AnimatedModelRenderer } from "./Animation/animatedModelRenderer";
+import { Quaternion } from "./Rendering/quaternion";
+import { Joint } from "./Animation/joint";
 
 // stuff related to camera and camera movement
 let firsPersonCamera = {
@@ -60,31 +60,51 @@ let previousFrameTime = 0;
 let frameCount = 0;
 let timeForFPS = 0;
 
-let renderer: Renderer;
+let renderer: AnimatedModelRenderer;
 //array of game objects
-let rootGameObject = new GameObject();
-let gameObjects = new Array<GameObject>();
-
-let allstarImage: HTMLImageElement;
-let allstarMeshes: Mesh[];
+//let rootGameObject = new GameObject();
+//let gameObjects = new Array<GameObject>();
+let models = new Array<AnimatedModel>();
 
 window.onload = main;
 function main(): void {
-    //first of all, load resources!
-    loadResources().then(() => {
+    FileLoader.loadGltf("./assets/whale.CYCLES.gltf").then((gltfModel) => {
         setup();
-        instantiateObjects();
-        renderer.bufferData(gameObjects); // This should be called everytime we add or remove meshes to the scene
+        let texture = renderer.loadTexture2(new Vector4(0, 0, 255, 255));
+        //renderer.bufferData2();
+        let model = new AnimatedModel(
+            gltfModel.positionData,
+            gltfModel.normalData,
+            gltfModel.texCoordData,
+            gltfModel.indicesData,
+            gltfModel.jointData,
+            gltfModel.weightData,
+            texture,
+            gltfModel.rootJoint,
+            gltfModel.jointCount,
+            renderer
+        );
+        models.push(model);
         createEventHandlers();
         requestAnimationFrame(gameLoop);
     });
+
+
+    // //first of all, load resources!
+    // loadResources().then(() => {
+    //     setup();
+    //     instantiateObjects();
+    //     renderer.bufferData(gameObjects); // This should be called everytime we add or remove meshes to the scene
+    //     createEventHandlers();
+    //     requestAnimationFrame(gameLoop);
+    // });
 
 }
 
 function setup(): void {
     let canvasElem: HTMLCanvasElement = document.querySelector("#canvas");
-    let vertexShaderElem: HTMLScriptElement = document.querySelector("#vertex-shader-3d-textured-lit");
-    let fragmentShaderElem: HTMLScriptElement = document.querySelector("#fragment-shader-3d-textured-lit");
+    let vertexShaderElem: HTMLScriptElement = document.querySelector("#vertex-shader-3d-textured-skinned");
+    let fragmentShaderElem: HTMLScriptElement = document.querySelector("#fragment-shader-3d-textured-skinned");
 
     //initialize canvas and webgl stuff
     let gl = canvasElem.getContext("webgl");
@@ -92,12 +112,13 @@ function setup(): void {
         console.error("Something went wrong while creating webgl context");
         return;
     }
+    gl.getExtension('OES_texture_float');
 
     let vertexShader = webglUtils.loadFromScript(gl, vertexShaderElem, gl.VERTEX_SHADER);
     let fragmentShader = webglUtils.loadFromScript(gl, fragmentShaderElem, gl.FRAGMENT_SHADER);
     let program = webglUtils.createProgram(gl, vertexShader, fragmentShader);
 
-    renderer = new Renderer(gl, program);
+    renderer = new AnimatedModelRenderer(gl, program);
 
     const aspect = canvasElem.clientWidth / canvasElem.clientHeight;
     let yFov = degToRad(60); //To radians;
@@ -115,34 +136,15 @@ function setup(): void {
 
 async function loadResources() {
     //we load everything we need to start rendering here....
-    let allstarImagePromise = FileLoader.loadImage("./assets/allstar.png");
-    let allstarMeshesPromise = FileLoader.loadOBJ("./assets/allstar.obj");
-    let promises: Promise<any>[] = [allstarImagePromise, allstarMeshesPromise];
-    
+    //let allstarImagePromise = FileLoader.loadImage("./assets/allstar.png");
+    //let allstarMeshesPromise = FileLoader.loadOBJ("./assets/allstar.obj");
+    //let promises: Promise<any>[] = [allstarImagePromise, allstarMeshesPromise];
+
     //resume only when everything is ready....
-    await Promise.all(promises).then((values) => {
-        allstarImage = values[0];
-        allstarMeshes = values[1];
-    });
-}
-
-function instantiateObjects(): void {
-    let allstarTexture = renderer.loadTexture(allstarImage);
-
-    allstarMeshes.forEach(m => {
-        m.texture = allstarTexture;
-        m.drawMode = DrawMode.Texture;
-        let newObj = new GameObject(
-            new Transform(
-                new Vector3(0, 1.5, -5),
-                new Vector3(0, 0, 0),
-                new Vector3(5, 5, 5),
-            ),
-            m
-        );
-        newObj.setParent(rootGameObject);
-        gameObjects.push(newObj);
-    });
+    //await Promise.all(promises).then((values) => {
+    //allstarImage = values[0];
+    //allstarMeshes = values[1];
+    //});
 }
 
 function gameLoop(now: number): void {
@@ -152,7 +154,7 @@ function gameLoop(now: number): void {
     //computeFramesPerSecond();
     processInput();
     update();
-    renderer.render(gameObjects);
+    render();
     requestAnimationFrame(gameLoop);
 }
 
@@ -167,20 +169,20 @@ function processInput() {
     firsPersonCamera.Move(direction);
 }
 
+
 function update(): void {
-    let camera = Camera.getActiveCamera();
-    let projectionMatrix = camera.getPerspectiveMatrix();
-    let viewMatrix = Matrix4.makeViewMatrix(
-        camera.transform.position,
-        Vector3.add(camera.transform.position, camera.transform.forward),
-        Vector3.up);
+    
+    models.forEach(model => {
+        model.update(deltaTime, previousFrameTime);
+        //model.transform.translate(new Vector3(1 * deltaTime, 0, 0));
+    });
+}
 
-    rootGameObject.updateLocalMatrices();
-    rootGameObject.updateWorldMatrices();
-
-    for (let i = 0; i < gameObjects.length; i++) {
-        gameObjects[i].transform.computeWorldViewMatrices(Matrix4.multiplyMatrices4(viewMatrix, projectionMatrix));
-    }
+function render(): void {
+    renderer.clear();
+    models.forEach(model => {
+        model.render(Camera.getActiveCamera());
+    });
 }
 
 function createEventHandlers(): void {

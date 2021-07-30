@@ -8,7 +8,6 @@ export class Transform {
     up: Vector3;
     right: Vector3;
     forward: Vector3;
-    private worldViewMatrix: Matrix4;
     private worldMatrix: Matrix4;
     private localMatrix: Matrix4;
     constructor(position?: Vector3, rotation?: Vector3, scale?: Vector3, up?: Vector3, right?: Vector3, forward?: Vector3) {
@@ -67,9 +66,7 @@ export class Transform {
     translate(translation: Vector3): void {
         this.position = Vector3.add(this.position, translation);
     }
-    computeWorldViewMatrices(viewProjectionMatrix: Matrix4): void {
-        this.worldViewMatrix = Matrix4.multiplyMatrices4(this.worldMatrix, viewProjectionMatrix);
-    }
+
     updateLocalMatrix(): void {
         this.localMatrix = Matrix4.makeIdentity();
         let translationMatrix = Matrix4.makeTranslation(this.position.x, this.position.y, this.position.z);
@@ -90,9 +87,6 @@ export class Transform {
             this.worldMatrix = Matrix4.multiplyMatrices4(this.localMatrix, parentMatrix);
         else
             this.worldMatrix = Matrix4.copy(this.localMatrix);
-    }
-    getWorldViewMatrix(): Matrix4 {
-        return this.worldViewMatrix;
     }
     getWorldMatrix(): Matrix4 {
         return this.worldMatrix;
