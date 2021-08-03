@@ -66,6 +66,56 @@ let renderer: AnimatedModelRenderer;
 //let gameObjects = new Array<GameObject>();
 let models = new Array<AnimatedModel>();
 
+
+//window.onload = test;
+function test() {
+
+    abstract class testModel {
+        renderer: testRenderer;
+        render(): void {
+            this.renderer.render(this);
+        }
+    }
+
+    interface testRenderer {
+        render(model: testModel): void;
+    }
+
+    class testStaticModel extends testModel {
+        staticStuff: string;
+    }
+
+    class testAnimatedModel extends testModel {
+        animatedStuff: string;
+    }
+
+    class testStaticRenderer implements testRenderer {
+        render(model: testStaticModel): void {
+            console.log(model.staticStuff);
+            console.log("rendered from static renderer");
+        }
+    }
+
+    class testAnimatedRenderer implements testRenderer {
+        render(model: testAnimatedModel): void {
+            console.log(model.animatedStuff);
+            console.log("rendered from animated renderer");
+        }
+    }
+
+    let t = new testStaticModel();
+    t.renderer = new testStaticRenderer();
+    t.staticStuff = "static content";
+
+    let t2 = new testAnimatedModel();
+    t2.renderer = new testAnimatedRenderer();
+    t2.animatedStuff = "animated content";
+
+    t.render();
+    t2.render();
+
+}
+
 window.onload = main;
 function main(): void {
     FileLoader.loadGltf("./assets/whale.CYCLES.gltf").then((gltfModel) => {
@@ -171,7 +221,7 @@ function processInput() {
 
 
 function update(): void {
-    
+
     models.forEach(model => {
         model.update(deltaTime, previousFrameTime);
         //model.transform.translate(new Vector3(1 * deltaTime, 0, 0));
