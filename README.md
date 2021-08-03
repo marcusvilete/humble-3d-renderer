@@ -1,8 +1,20 @@
-# humble-3d-animations
+# humble-3d-renderer
 
 
-This is another very humble experiment i built while studying basic computer graphics.
+This is a very, very humble 3D renderer i built while studying basic computer graphics.
 
-The model, skinning information and animation are loaded from a glft file...
+While at it, i also wanted to learn / practice a bit of typescript.
 
-To be continued...
+
+I found the model that is being rendered on [Sketchfab](https://sketchfab.com/), created by [alexdelker](https://sketchfab.com/alexdelker) under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)
+
+This is just an experiment,  not really "production ready", so be careful!
+
+
+[< Try it here >](https://marcusvilete.github.io/humble-3d-renderer/index.html)
+
+** Might take a while to load the model! **
+
+** WASD to translate the camera **
+
+** MOUSE to rotate the camera **

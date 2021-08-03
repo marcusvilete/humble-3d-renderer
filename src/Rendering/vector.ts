@@ -1,5 +1,3 @@
-import { lerp } from "../Etc/mathFunctions";
-
 //TODO: add functions to do math in place?
 export class Vector2 {
     x: number;
@@ -96,14 +94,9 @@ export class Vector2 {
      * @returns New scaled vector
      */
     static divide(v: Vector2, scalar: number): Vector2 {
-        if (scalar !== 0) {
-            return new Vector2(
-                v.x / scalar,
-                v.y / scalar);
-        } else {
-            console.error("Can't divide by zero, Vector2 was not divided!")
-            return v;
-        }
+        return new Vector2(
+            v.x / scalar,
+            v.y / scalar);
     }
     /**
      * Can be thought of as "how aligned are two vectors".
@@ -255,16 +248,11 @@ export class Vector3 extends Vector2 {
      * @returns New scaled vector
      */
     static divide(v: Vector3, scalar: number): Vector3 {
-        if (scalar !== 0) {
-            return new Vector3(
-                v.x / scalar,
-                v.y / scalar,
-                v.z / scalar
-            );
-        } else {
-            console.error("Can't divide by zero, Vector3 was not divided!");
-            return v;
-        }
+        return new Vector3(
+            v.x / scalar,
+            v.y / scalar,
+            v.z / scalar
+        );
     }
     /**
      * Can be thought of as "how aligned are two vectors".
@@ -311,13 +299,6 @@ export class Vector3 extends Vector2 {
             (a.z * b.x) - (a.x * b.z),
             (a.x * b.y) - (a.y * b.x)
         );
-    }
-    static interpolate(a: Vector3, b: Vector3, step: number): Vector3 {
-        let x = lerp(a.x, b.x, step);
-        let y = lerp(a.y, b.y, step);
-        let z = lerp(a.z, b.z, step);
-
-        return new Vector3(x, y, z);
     }
 }
 

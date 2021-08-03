@@ -20,17 +20,6 @@
         precision mediump float; varying vec2 v_texcoord; varying vec3 v_normal; uniform sampler2D u_texture; uniform vec3 u_reverseLightDirection; void main() { vec3 normal = normalize(v_normal); float light = dot(normal, u_reverseLightDirection); gl_FragColor
         = texture2D(u_texture, v_texcoord); gl_FragColor.rgb *= max(light, 0.6); }
     </script>
-    <script id="vertex-shader-3d-textured-skinned" type="x-shader/x-vertex">
-        attribute vec4 a_position; attribute vec2 a_texcoord; attribute vec3 a_normal; attribute vec4 a_weights; attribute vec4 a_joints; uniform mat4 u_worldMatrix; uniform mat4 u_viewMatrix; uniform mat4 u_projectionMatrix; uniform sampler2D u_jointTexture;
-        uniform float u_numJoints; varying vec2 v_texcoord; varying vec3 v_normal; mat4 getBoneMatrix(float jointNdx) { float v = (jointNdx + 0.5) / u_numJoints; return mat4( texture2D(u_jointTexture, vec2(((0.5 + 0.0) / 4.) , v)), texture2D(u_jointTexture,
-        vec2(((0.5 + 1.0) / 4.) , v)), texture2D(u_jointTexture, vec2(((0.5 + 2.0) / 4.) , v)), texture2D(u_jointTexture, vec2(((0.5 + 3.0) / 4.) , v))); } void main() { mat4 skinMatrix = getBoneMatrix(a_joints[0]) * a_weights[0] + getBoneMatrix(a_joints[1])
-        * a_weights[1] + getBoneMatrix(a_joints[2]) * a_weights[2] + getBoneMatrix(a_joints[3]) * a_weights[3]; mat4 world = u_worldMatrix * skinMatrix; gl_Position = u_projectionMatrix * u_viewMatrix * world * a_position; v_texcoord = a_texcoord; v_normal
-        = mat3(world) * a_normal; }
-    </script>
-    <script id="fragment-shader-3d-textured-skinned" type="x-shader/x-fragment">
-        precision mediump float; varying vec2 v_texcoord; varying vec3 v_normal; uniform sampler2D u_texture; uniform vec3 u_reverseLightDirection; void main() { vec3 normal = normalize(v_normal); float light = dot(normal, u_reverseLightDirection) * .5 + .5;;
-        gl_FragColor = texture2D(u_texture, v_texcoord); gl_FragColor.rgb *= light; }
-    </script>
 
     <script src="./dist/main.js"></script>
 </body>
